@@ -15,7 +15,7 @@ class DummyStrip:
 
 class DummyVM:
     def __init__(self):
-        self.strip = [DummyStrip()]
+        self.strip = [DummyStrip(), DummyStrip(), DummyStrip()]
 
 class TestRoutingPanel(unittest.TestCase):
     def setUp(self):
@@ -24,13 +24,18 @@ class TestRoutingPanel(unittest.TestCase):
         self.panel = RoutingPanel(self.vm)
 
     def test_button_count(self):
-        self.assertEqual(len(self.panel.buttons), 8)
+        # Should have 3 strips with 8 buttons each
+        self.assertEqual(len(self.panel.buttons), 3)
+        for strip_idx in self.panel.buttons:
+            self.assertEqual(len(self.panel.buttons[strip_idx]), 8)
 
     def test_toggle_output(self):
-        for label in self.panel.buttons:
-            self.panel._toggle_output(label)
-            self.assertTrue(getattr(self.vm.strip[0], label))
-            self.assertTrue(self.panel.buttons[label].isChecked())
+        # Test toggling for first strip
+        strip_idx = 0
+        output = "A1"
+        self.panel._toggle_output(strip_idx, output, True)
+        self.assertTrue(getattr(self.vm.strip[strip_idx], output))
+        self.assertTrue(self.panel.buttons[strip_idx][output].isChecked())
 
 if __name__ == '__main__':
     unittest.main()

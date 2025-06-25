@@ -1,9 +1,7 @@
 import sys
 from PyQt5 import QtWidgets, QtGui
 from voicemeeterlib import api
-from widgets.volume_panel import VolumePanel
-from widgets.routing_panel import RoutingPanel
-from utils.audio_device import restore_default_audio
+from widgets.combined_panel import CombinedControlPanel
 
 ICON_PATH = "tray_icon.ico"
 
@@ -11,14 +9,10 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
     def __init__(self, icon_path, vm, parent=None):
         super().__init__(QtGui.QIcon(icon_path), parent)
         self.vm = vm
-        self.volume_panel = VolumePanel(vm)
-        self.routing_panel = RoutingPanel(vm)
+        self.control_panel = CombinedControlPanel(vm)
 
         menu = QtWidgets.QMenu(parent)
-        menu.addAction("Show Volume Sliders", self.toggle_volume)
-        menu.addAction("Show Routing Controls", self.toggle_routing)
-        menu.addSeparator()
-        menu.addAction("Restore Default Audio Devices", restore_default_audio)
+        menu.addAction("Show Controls", self.toggle_controls)
         menu.addSeparator()
         menu.addAction("Exit", QtWidgets.qApp.quit)
 
@@ -27,22 +21,15 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
 
     def icon_clicked(self, reason):
         if reason == QtWidgets.QSystemTrayIcon.Trigger:
-            self.toggle_volume()
+            self.toggle_controls()
 
-    def toggle_volume(self):
-        if self.volume_panel.isVisible():
-            self.volume_panel.hide()
+    def toggle_controls(self):
+        if self.control_panel.isVisible():
+            self.control_panel.hide()
         else:
-            self.volume_panel.update_sliders()
-            self._position_panel(self.volume_panel)
-            self.volume_panel.show()
-
-    def toggle_routing(self):
-        if self.routing_panel.isVisible():
-            self.routing_panel.hide()
-        else:
-            self._position_panel(self.routing_panel)
-            self.routing_panel.show()
+            self.control_panel.update_controls()
+            self._position_panel(self.control_panel)
+            self.control_panel.show()
 
     def _position_panel(self, panel):
         screen = QtWidgets.QDesktopWidget().availableGeometry()

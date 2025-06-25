@@ -15,26 +15,24 @@ class TestTrayApp(unittest.TestCase):
         self.vm = MagicMock()
         self.tray = TrayApp('tray_icon.ico', self.vm)
 
-    def test_volume_panel_toggle(self):
-        self.tray.volume_panel.isVisible = MagicMock(return_value=False)
-        self.tray.volume_panel.show = MagicMock()
-        self.tray.volume_panel.update_sliders = MagicMock()
+    def test_controls_panel_toggle(self):
+        self.tray.control_panel.isVisible = MagicMock(return_value=False)
+        self.tray.control_panel.show = MagicMock()
+        self.tray.control_panel.update_controls = MagicMock()
         self.tray._position_panel = MagicMock()
-        self.tray.toggle_volume()
-        self.tray.volume_panel.show.assert_called_once()
-        self.tray.volume_panel.update_sliders.assert_called_once()
+        self.tray.toggle_controls()
+        self.tray.control_panel.show.assert_called_once()
+        self.tray.control_panel.update_controls.assert_called_once()
 
-    def test_routing_panel_toggle(self):
-        self.tray.routing_panel.isVisible = MagicMock(return_value=False)
-        self.tray.routing_panel.show = MagicMock()
-        self.tray._position_panel = MagicMock()
-        self.tray.toggle_routing()
-        self.tray.routing_panel.show.assert_called_once()
+    def test_menu_actions(self):
+        # Check that the menu actions are present
+        actions = [a.text() for a in self.tray.contextMenu().actions() if a.text()]
+        expected_actions = ['Show Controls', 'Exit']
+        for action in expected_actions:
+            self.assertIn(action, actions)
 
-    def test_restore_default_audio_action(self):
-        # Check that the menu action is present
-        actions = [a.text() for a in self.tray.contextMenu().actions()]
-        self.assertIn('Restore Default Audio Devices', actions)
+if __name__ == '__main__':
+    unittest.main()
 
 if __name__ == '__main__':
     unittest.main()

@@ -5,10 +5,18 @@ A lightweight Windows system tray application for controlling Voicemeeter audio 
 ## Features
 
 - **System Tray Integration**: Resides in Windows system tray with custom icon
-- **Volume Control**: 5 vertical sliders for A1-A5 hardware outputs with real-time sync
-- **Output Routing**: Toggle routing for input strips to A1-A5 (hardware) and B1-B3 (virtual) outputs
-- **Audio Device Management**: One-click restoration of Windows default audio devices
-- **Modern UI**: Clean, responsive interface with popup panels
+- **Unified Control Panel**: Combined interface with routing matrix above volume controls
+- **Enhanced Volume Control**: 
+  - 3 vertical sliders for virtual inputs (Voicemeeter Input, AUX, VAIO3)
+  - Extended range (-60dB to +12dB) for full Voicemeeter compatibility
+  - Real-time VU meters with color-coded level indicators
+  - Double-click sliders to reset to 0dB
+  - Live dB value display and tooltips
+- **Improved Routing Matrix**: 
+  - Clean vertical button layout for better visibility
+  - Controls all 3 virtual inputs to A1-A5 (hardware) and B1-B3 (virtual) outputs
+  - Color-coded buttons with visual feedback for active/inactive states
+- **Real-time Sync**: Live synchronization with Voicemeeter settings
 
 ## Requirements
 
@@ -17,7 +25,6 @@ A lightweight Windows system tray application for controlling Voicemeeter audio 
 - Voicemeeter (Potato edition recommended)
 - PyQt5
 - voicemeeterlib
-- pywin32
 
 ## Installation
 
@@ -45,18 +52,24 @@ python main.py
 - Click the tray icon to open volume control panel
 - Right-click for context menu with additional options
 
-### Volume Control
-- Adjust A1-A5 output levels using vertical sliders
-- Real-time synchronization with Voicemeeter settings
+### System Tray
+- Click the tray icon to open the unified control panel
+- Right-click for context menu with Show Controls and Exit options
 
-### Routing Control
-- Toggle output routing for input strips
-- Visual indicators for active/inactive states
-
-### Audio Device Restore
-- One-click restoration of preferred Windows default devices:
-  - Playback Default: Voicemeeter Input
-  - Communications Default: Voicemeeter AUX Input
+### Unified Control Panel
+- **Routing Matrix (Top)**: Toggle output routing for all 3 virtual inputs
+  - Vertically aligned buttons for better visibility and organization
+  - Each virtual input (Voicemeeter Input, AUX, VAIO3) has its own column
+  - Toggle routing to A1-A5 (hardware outputs) and B1-B3 (virtual outputs)
+  
+- **Volume Control (Bottom)**: 
+  - 3 volume sliders for virtual inputs with extended -60dB to +12dB range
+  - Real-time VU meters showing current audio levels with color coding:
+    - Green: Below -12dB (safe levels)
+    - Yellow: -12dB to 0dB (caution levels)  
+    - Red: Above 0dB (clipping risk)
+  - Double-click any slider to instantly reset to 0dB
+  - Live dB value display below each slider
 
 ## Project Structure
 
@@ -64,11 +77,10 @@ python main.py
 VMControl/
 ├── main.py                 # Main application entry point
 ├── tray_icon.ico          # System tray icon
-├── utils/
-│   └── audio_device.py    # Windows audio device management
 ├── widgets/
-│   ├── volume_panel.py    # Volume control panel
-│   └── routing_panel.py   # Output routing panel
+│   ├── combined_panel.py  # Unified control panel with routing and volume
+│   ├── volume_panel.py    # Volume control with VU meters and double-click reset
+│   └── routing_panel.py   # Matrix routing panel with vertical layout
 ├── tests/                 # Unit tests
 ├── requirements.txt       # Python dependencies
 └── README.md             # This file
@@ -88,8 +100,10 @@ pyinstaller --windowed --onefile --icon=tray_icon.ico main.py
 
 ## Known Issues
 
-- Audio device restoration requires exact device name matching
-- COM object registration may be required for some Windows configurations
+- VU meters update in real-time but require Voicemeeter to be running
+- Volume sliders sync with Voicemeeter on panel open
+- Routing panel requires Voicemeeter to be running for proper functionality
+- Double-click reset feature works on volume sliders only
 
 ## Contributing
 

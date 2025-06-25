@@ -1,3 +1,2 @@
 PyQt5==5.15.9
 voicemeeterlib==2.4.1
-pywin32==306
