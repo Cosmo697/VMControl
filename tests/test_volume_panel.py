@@ -1,5 +1,10 @@
 import unittest
 from unittest.mock import MagicMock
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from widgets.volume_panel import VolumePanel
 from PyQt5 import QtWidgets
 

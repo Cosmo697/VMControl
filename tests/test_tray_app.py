@@ -1,7 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from PyQt5 import QtWidgets
+import os
 import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from PyQt5 import QtWidgets
 
 sys.modules['voicemeeterlib'] = MagicMock()
 from main import TrayApp
