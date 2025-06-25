@@ -1,3 +1,4 @@
+import math
 from PyQt5 import QtWidgets, QtCore, QtGui
 from .volume_panel import VolumePanel
 from .routing_panel import RoutingPanel
@@ -13,6 +14,16 @@ class CombinedControlPanel(QtWidgets.QWidget):
         )
         self.setFixedSize(520, 650)
         self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)  # Don't steal focus
+        
+        # Set up auto-hide timer for mouse leave detection
+        self.hide_timer = QtCore.QTimer()
+        self.hide_timer.setSingleShot(True)
+        self.hide_timer.timeout.connect(self.hide)
+        
+        # Install event filter to track mouse events
+        self.installEventFilter(self)
+        
+
         
         # Apply dark theme
         self.setStyleSheet("""
@@ -77,6 +88,21 @@ class CombinedControlPanel(QtWidgets.QWidget):
         """Hide panel when it loses focus"""
         self.hide()
         super().focusOutEvent(event)
+        
+    def eventFilter(self, obj, event):
+        """Event filter to detect when mouse leaves the window area"""
+        if event.type() == 11:  # Leave event
+            # Start timer to hide after 500ms if mouse doesn't return
+            self.hide_timer.start(500)
+        elif event.type() == 10:  # Enter event
+            # Cancel hide timer if mouse returns
+            self.hide_timer.stop()
+        return super().eventFilter(obj, event)
+        
+    def showEvent(self, event):
+        """Reset auto-hide timer when window is shown"""
+        self.hide_timer.stop()
+        super().showEvent(event)
 
 
 class RoutingPanelEmbedded(QtWidgets.QWidget):
@@ -275,6 +301,11 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
         
         main_layout.addLayout(volume_layout)
         self.setLayout(main_layout)
+        
+        # Set up timer for VU meter updates
+        self.vu_timer = QtCore.QTimer()
+        self.vu_timer.timeout.connect(self._update_vu_meters)
+        self.vu_timer.start(50)  # Update every 50ms for smooth animation
 
     def _reset_to_zero(self, strip_idx):
         """Reset slider to 0dB on double-click"""
@@ -282,6 +313,8 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
         strip_indices = [5, 6, 7]
         if strip_idx in strip_indices:
             slider_index = strip_indices.index(strip_idx)
+            # Set slider to 60 (which represents 0dB since range is -60 to +12)
+            # The slider value directly corresponds to dB, so 0 = 0dB
             self.sliders[slider_index].setValue(0)
             self._update_gain(strip_idx, 0)
 
@@ -310,6 +343,31 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
             except (IndexError, AttributeError):
                 pass
 
+    def _update_vu_meters(self):
+        """Update VU meters with real audio levels from Voicemeeter"""
+        strip_indices = [5, 6, 7]  # Inputs 6, 7, 8
+        for i, strip_idx in enumerate(strip_indices):
+            try:
+                if strip_idx < len(self.vm.strip):
+                    # Get audio levels using the correct voicemeeterlib API
+                    # Get postmute levels (after mute/gain but before fader)
+                    levels = self.vm.strip[strip_idx].levels.postmute
+                    
+                    # levels is a tuple, get the left channel (index 0)
+                    if levels and len(levels) > 0:
+                        level_db = levels[0]  # Already in dB
+                        # Clamp to our expected range
+                        level_db = max(-60, min(12, level_db))
+                    else:
+                        level_db = -60  # No signal
+                    
+                    # Update the corresponding VU meter
+                    if i < len(self.vu_meters):
+                        self.vu_meters[i].update_level(level_db)
+            except (IndexError, AttributeError, TypeError, ValueError):
+                # If we can't get the level, set to minimum
+                if i < len(self.vu_meters):
+                    self.vu_meters[i].update_level(-60)
 
 class DoubleClickSlider(QtWidgets.QSlider):
     """Custom slider that emits doubleClicked signal"""

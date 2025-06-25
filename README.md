@@ -55,6 +55,7 @@ python main.py
 ### System Tray
 - Click the tray icon to open the unified control panel
 - Right-click for context menu with Show Controls and Exit options
+- Control panel automatically hides when mouse leaves the window area or window loses focus
 
 ### Unified Control Panel
 - **Routing Matrix (Top)**: Toggle output routing for all 3 virtual inputs
