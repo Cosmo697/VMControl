@@ -1,7 +1,7 @@
-import math
 from PyQt5 import QtWidgets, QtCore, QtGui
 from .volume_panel import VolumePanel
 from .routing_panel import RoutingPanel
+from .constants import STRIP_INDICES, VU_UPDATE_INTERVAL_MS, AUTO_HIDE_DELAY_MS
 
 class CombinedControlPanel(QtWidgets.QWidget):
     def __init__(self, vm):
@@ -91,10 +91,10 @@ class CombinedControlPanel(QtWidgets.QWidget):
         
     def eventFilter(self, obj, event):
         """Event filter to detect when mouse leaves the window area"""
-        if event.type() == 11:  # Leave event
-            # Start timer to hide after 500ms if mouse doesn't return
-            self.hide_timer.start(500)
-        elif event.type() == 10:  # Enter event
+        if event.type() == QtCore.QEvent.Leave:
+            # Start timer to hide after a short delay if mouse doesn't return
+            self.hide_timer.start(AUTO_HIDE_DELAY_MS)
+        elif event.type() == QtCore.QEvent.Enter:
             # Cancel hide timer if mouse returns
             self.hide_timer.stop()
         return super().eventFilter(obj, event)
@@ -125,8 +125,8 @@ class RoutingPanelEmbedded(QtWidgets.QWidget):
         strip_names = ["Voicemeeter Input", "Voicemeeter AUX", "VAIO3"]
         outputs = ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3"]
         
-        # Use inputs 5, 6, 7 (indices for inputs 6, 7, 8 in Voicemeeter Potato)
-        strip_indices = [5, 6, 7]
+        # Use the configured strip indices for Voicemeeter Potato
+        strip_indices = STRIP_INDICES
         
         for i, (strip_name, strip_idx) in enumerate(zip(strip_names, strip_indices)):
             # Create group box for each virtual input
@@ -201,7 +201,7 @@ class RoutingPanelEmbedded(QtWidgets.QWidget):
 
     def update_routing_states(self):
         """Update all button states from current Voicemeeter settings"""
-        strip_indices = [5, 6, 7]  # Inputs 6, 7, 8
+        strip_indices = STRIP_INDICES  # Inputs 6, 7, 8
         for strip_idx in strip_indices:
             if strip_idx in self.buttons:
                 for output in ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3"]:
@@ -231,10 +231,11 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
         volume_layout = QtWidgets.QHBoxLayout()
         self.sliders = []
         self.vu_meters = []
+        self.mute_checkboxes = []
         self.strip_names = ["Voicemeeter Input", "Voicemeeter AUX", "VAIO3"]
         
         # Use inputs 5, 6, 7 (indices for inputs 6, 7, 8 in Voicemeeter Potato)
-        strip_indices = [5, 6, 7]
+        strip_indices = STRIP_INDICES
         
         for i, (strip_name, strip_idx) in enumerate(zip(self.strip_names, strip_indices)):
             # Create vertical layout for each strip
@@ -288,6 +289,16 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
             controls_layout.addWidget(vu_meter)
             controls_layout.addWidget(custom_slider)
             strip_layout.addLayout(controls_layout)
+
+            # Mute checkbox
+            mute_box = QtWidgets.QCheckBox("Mute")
+            mute_box.setChecked(getattr(self.vm.strip[strip_idx], "mute", False))
+            mute_box.stateChanged.connect(
+                lambda state, idx=strip_idx: self._toggle_mute(idx, state)
+            )
+            strip_layout.addWidget(mute_box)
+
+            self.mute_checkboxes.append(mute_box)
             
             # Add dB value label
             db_label = QtWidgets.QLabel(f"{current_gain}dB")
@@ -306,12 +317,12 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
         # Set up timer for VU meter updates
         self.vu_timer = QtCore.QTimer()
         self.vu_timer.timeout.connect(self._update_vu_meters)
-        self.vu_timer.start(50)  # Update every 50ms for smooth animation
+        self.vu_timer.start(VU_UPDATE_INTERVAL_MS)  # Update for smooth animation
 
     def _reset_to_zero(self, strip_idx):
         """Reset slider to 0dB on double-click"""
         # Find which slider corresponds to this strip index
-        strip_indices = [5, 6, 7]
+        strip_indices = STRIP_INDICES
         if strip_idx in strip_indices:
             slider_index = strip_indices.index(strip_idx)
             
@@ -365,7 +376,7 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
                 setattr(self.vm.strip[strip_idx], "gain", float(target_value))
                 
                 # Also update the slider and label to match
-                strip_indices = [5, 6, 7]
+                strip_indices = STRIP_INDICES
                 if strip_idx in strip_indices:
                     slider_index = strip_indices.index(strip_idx)
                     slider = self.sliders[slider_index]
@@ -409,8 +420,16 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
         if db_label:
             db_label.setText(f"{val}dB")
 
+    def _toggle_mute(self, strip_idx, state):
+        """Toggle mute state for a strip."""
+        try:
+            if strip_idx < len(self.vm.strip):
+                setattr(self.vm.strip[strip_idx], "mute", bool(state))
+        except (IndexError, AttributeError):
+            pass
+
     def update_sliders(self):
-        strip_indices = [5, 6, 7]  # Inputs 6, 7, 8
+        strip_indices = STRIP_INDICES  # Inputs 6, 7, 8
         for i, strip_idx in enumerate(strip_indices):
             # Skip strips that are currently being reset
             if strip_idx in self.resetting_strips:
@@ -432,12 +451,18 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
                     db_label = self.findChild(QtWidgets.QLabel, f"db_label_{strip_idx}")
                     if db_label:
                         db_label.setText(f"{current_gain}dB")
+
+                    # Update mute checkbox state
+                    if i < len(self.mute_checkboxes):
+                        self.mute_checkboxes[i].setChecked(
+                            getattr(self.vm.strip[strip_idx], "mute", False)
+                        )
             except (IndexError, AttributeError):
                 pass
 
     def _update_vu_meters(self):
         """Update VU meters with real audio levels from Voicemeeter"""
-        strip_indices = [5, 6, 7]  # Inputs 6, 7, 8
+        strip_indices = STRIP_INDICES  # Inputs 6, 7, 8
         for i, strip_idx in enumerate(strip_indices):
             try:
                 if strip_idx < len(self.vm.strip):

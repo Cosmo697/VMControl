@@ -2,9 +2,10 @@ import sys
 import os
 import signal
 import atexit
-from PyQt5 import QtWidgets, QtGui, QtCore, QtNetwork
+from PyQt5 import QtWidgets, QtGui, QtCore
 from voicemeeterlib import api
 from widgets.combined_panel import CombinedControlPanel
+from widgets.constants import STRIP_INDICES
 
 ICON_PATH = "tray_icon.ico"
 LOCK_FILE = "vmcontrol.lock"
@@ -44,6 +45,7 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
 
         menu = QtWidgets.QMenu(parent)
         menu.addAction("Show Controls", self.toggle_controls)
+        menu.addAction("Mute All", self.toggle_all_mutes)
         menu.addSeparator()
         menu.addAction("Exit", self.graceful_shutdown)
 
@@ -103,6 +105,22 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
         if reason == QtWidgets.QSystemTrayIcon.Trigger:
             self.toggle_controls()
 
+    def toggle_all_mutes(self):
+        """Toggle mute state for all configured strips."""
+        states = []
+        for idx in STRIP_INDICES:
+            try:
+                states.append(getattr(self.vm.strip[idx], "mute"))
+            except (IndexError, AttributeError):
+                pass
+        new_state = not all(states)
+        for idx in STRIP_INDICES:
+            try:
+                setattr(self.vm.strip[idx], "mute", new_state)
+            except (IndexError, AttributeError):
+                pass
+        self.control_panel.volume_panel.update_sliders()
+
     def toggle_controls(self):
         if self.control_panel.isVisible():
             self.control_panel.hide()
@@ -121,9 +139,11 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
 
     def eventFilter(self, obj, event):
         """Global event filter to hide panel when clicking outside"""
-        # MouseButtonPress = 2, MouseButtonRelease = 3
-        if (self.control_panel.isVisible() and 
-            event.type() == 2):  # MouseButtonPress
+        # Hide the panel if any mouse press occurs outside of it
+        if (
+            self.control_panel.isVisible()
+            and event.type() == QtCore.QEvent.MouseButtonPress
+        ):
             
             # Check if the click is outside the control panel
             try:
