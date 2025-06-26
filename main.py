@@ -6,6 +6,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from voicemeeterlib import api
 from widgets.combined_panel import CombinedControlPanel
 from widgets.constants import STRIP_INDICES
+from widgets.preset_manager import PresetManager
 
 ICON_PATH = "tray_icon.ico"
 LOCK_FILE = "vmcontrol.lock"
@@ -46,6 +47,8 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
         menu = QtWidgets.QMenu(parent)
         menu.addAction("Show Controls", self.toggle_controls)
         menu.addAction("Mute All", self.toggle_all_mutes)
+        menu.addAction("Save Preset", self.save_preset)
+        menu.addAction("Load Preset", self.load_preset)
         menu.addSeparator()
         menu.addAction("Exit", self.graceful_shutdown)
 
@@ -120,6 +123,23 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
             except (IndexError, AttributeError):
                 pass
         self.control_panel.volume_panel.update_sliders()
+
+    def save_preset(self):
+        """Save current Voicemeeter configuration to a file."""
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            None, "Save Preset", "vm_preset.json", "JSON Files (*.json)"
+        )
+        if path:
+            PresetManager.save_preset(self.vm, path)
+
+    def load_preset(self):
+        """Load Voicemeeter configuration from a preset file."""
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            None, "Load Preset", "", "JSON Files (*.json)"
+        )
+        if path:
+            PresetManager.load_preset(self.vm, path)
+            self.control_panel.update_controls()
 
     def toggle_controls(self):
         if self.control_panel.isVisible():

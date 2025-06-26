@@ -5,7 +5,7 @@ A lightweight Windows system tray application for controlling Voicemeeter audio 
 ## Features
 
 - **System Tray Integration**: Resides in Windows system tray with custom icon
-  - Tray menu now includes a "Mute All" action
+  - Tray menu now includes "Mute All" plus preset save/load actions
 - **Unified Control Panel**: Combined interface with routing matrix above volume controls
 - **Enhanced Volume Control**:
   - 3 vertical sliders for virtual inputs (Voicemeeter Input, AUX, VAIO3)
@@ -20,6 +20,7 @@ A lightweight Windows system tray application for controlling Voicemeeter audio 
   - Color-coded buttons with visual feedback for active/inactive states
 - **Auto-Hide Functionality**: Panel automatically hides when mouse leaves the area or focus is lost
 - **Real-time Sync**: Live synchronization with Voicemeeter settings
+- **Preset Management**: Save and load routing/volume configurations
 
 ## Requirements
 
@@ -51,9 +52,9 @@ python main.py
 
 ## Usage
 
-### System Tray
+-### System Tray
 - Click the tray icon to open the unified control panel
-- Right-click for context menu with Show Controls, Mute All and Exit options
+- Right-click for context menu with Show Controls, Mute All, Save Preset, Load Preset and Exit options
 - Control panel automatically hides when mouse leaves the window area or window loses focus
 
 ### Unified Control Panel
