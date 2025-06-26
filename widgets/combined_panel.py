@@ -217,6 +217,7 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
     def __init__(self, vm):
         super().__init__()
         self.vm = vm
+        self.resetting_strips = set()  # Track which strips are being reset
         
         main_layout = QtWidgets.QVBoxLayout()
         
@@ -313,17 +314,95 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
         strip_indices = [5, 6, 7]
         if strip_idx in strip_indices:
             slider_index = strip_indices.index(strip_idx)
-            # Set slider to 60 (which represents 0dB since range is -60 to +12)
-            # The slider value directly corresponds to dB, so 0 = 0dB
-            self.sliders[slider_index].setValue(0)
-            self._update_gain(strip_idx, 0)
+            
+            # Mark this strip as being reset to prevent interference for longer
+            self.resetting_strips.add(strip_idx)
+            
+            # Disconnect the slider signal to prevent any interference
+            slider = self.sliders[slider_index]
+            try:
+                slider.valueChanged.disconnect()
+            except TypeError:
+                pass  # Signal wasn't connected
+            
+            # Force set Voicemeeter to 0dB multiple times with more persistence
+            for attempt in range(5):
+                try:
+                    setattr(self.vm.strip[strip_idx], "gain", 0.0)
+                    QtCore.QCoreApplication.processEvents()
+                    # Verify it was set
+                    actual = getattr(self.vm.strip[strip_idx], "gain")
+                    if abs(actual) < 0.1:  # Close enough to 0
+                        break
+                except Exception as e:
+                    pass
+            
+            # Update slider to 0
+            slider.setValue(0)
+            
+            # Reconnect the signal
+            slider.valueChanged.connect(lambda val, idx=strip_idx: self._update_gain(idx, val))
+            
+            # Update the dB label
+            db_label = self.findChild(QtWidgets.QLabel, f"db_label_{strip_idx}")
+            if db_label:
+                db_label.setText("0dB")
+            
+            # Monitor and enforce the reset over a longer time period
+            self._enforce_reset_value(strip_idx, 0, 0)
+    
+    def _enforce_reset_value(self, strip_idx, target_value, attempts=0):
+        """Enforce the reset value by checking and correcting it multiple times"""
+        max_attempts = 20  # Increased from 10 to 20 for more persistence
+        if attempts >= max_attempts:
+            self.resetting_strips.discard(strip_idx)
+            return
+        
+        try:
+            current_gain = getattr(self.vm.strip[strip_idx], "gain")
+            if abs(current_gain - target_value) > 0.1:  # If not close to target
+                # Force it back to target value
+                setattr(self.vm.strip[strip_idx], "gain", float(target_value))
+                
+                # Also update the slider and label to match
+                strip_indices = [5, 6, 7]
+                if strip_idx in strip_indices:
+                    slider_index = strip_indices.index(strip_idx)
+                    slider = self.sliders[slider_index]
+                    
+                    # Temporarily disconnect, update, and reconnect
+                    try:
+                        slider.valueChanged.disconnect()
+                    except TypeError:
+                        pass
+                    
+                    slider.setValue(target_value)
+                    slider.valueChanged.connect(lambda val, idx=strip_idx: self._update_gain(idx, val))
+                    
+                    # Update label
+                    db_label = self.findChild(QtWidgets.QLabel, f"db_label_{strip_idx}")
+                    if db_label:
+                        db_label.setText(f"{target_value}dB")
+                
+                # Schedule another check sooner for more aggressive correction
+                QtCore.QTimer.singleShot(50, lambda: self._enforce_reset_value(strip_idx, target_value, attempts + 1))
+            else:
+                # Value is correct, but keep monitoring for a bit longer
+                if attempts < 15:  # Continue monitoring for 15 more cycles
+                    QtCore.QTimer.singleShot(100, lambda: self._enforce_reset_value(strip_idx, target_value, attempts + 1))
+                else:
+                    self.resetting_strips.discard(strip_idx)
+        except Exception as e:
+            self.resetting_strips.discard(strip_idx)
+    
+
 
     def _update_gain(self, strip_idx, val):
         """Update gain and refresh the dB label"""
         try:
             if strip_idx < len(self.vm.strip):
                 setattr(self.vm.strip[strip_idx], "gain", float(val))
-        except (IndexError, AttributeError):
+        except (IndexError, AttributeError) as e:
             pass
             
         db_label = self.findChild(QtWidgets.QLabel, f"db_label_{strip_idx}")
@@ -333,10 +412,23 @@ class VolumePanelEmbedded(QtWidgets.QWidget):
     def update_sliders(self):
         strip_indices = [5, 6, 7]  # Inputs 6, 7, 8
         for i, strip_idx in enumerate(strip_indices):
+            # Skip strips that are currently being reset
+            if strip_idx in self.resetting_strips:
+                continue
+                
             try:
                 if strip_idx < len(self.vm.strip):
                     current_gain = int(self.vm.strip[strip_idx].gain)
-                    self.sliders[i].setValue(current_gain)
+                    
+                    # Only update the slider if there's a significant difference
+                    # Block signals to prevent triggering value changes in Voicemeeter
+                    current_slider_value = self.sliders[i].value()
+                    if abs(current_slider_value - current_gain) > 1:  # More than 1dB difference
+                        self.sliders[i].blockSignals(True)
+                        self.sliders[i].setValue(current_gain)
+                        self.sliders[i].blockSignals(False)
+                        
+                    # Always update the label to show current Voicemeeter value
                     db_label = self.findChild(QtWidgets.QLabel, f"db_label_{strip_idx}")
                     if db_label:
                         db_label.setText(f"{current_gain}dB")

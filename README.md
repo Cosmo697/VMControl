@@ -16,6 +16,7 @@ A lightweight Windows system tray application for controlling Voicemeeter audio 
   - Clean vertical button layout for better visibility
   - Controls all 3 virtual inputs to A1-A5 (hardware) and B1-B3 (virtual) outputs
   - Color-coded buttons with visual feedback for active/inactive states
+- **Auto-Hide Functionality**: Panel automatically hides when mouse leaves the area or focus is lost
 - **Real-time Sync**: Live synchronization with Voicemeeter settings
 
 ## Requirements
@@ -30,7 +31,7 @@ A lightweight Windows system tray application for controlling Voicemeeter audio 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/VMControl.git
+git clone https://github.com/Cosmo697/VMControl.git
 cd VMControl
 ```
 
@@ -47,10 +48,6 @@ python main.py
 ```
 
 ## Usage
-
-### System Tray
-- Click the tray icon to open volume control panel
-- Right-click for context menu with additional options
 
 ### System Tray
 - Click the tray icon to open the unified control panel
@@ -91,13 +88,15 @@ VMControl/
 
 ### Running Tests
 ```bash
-python -m unittest discover -s tests
+python -m pytest tests/ -v
 ```
 
-### Building Executable
-```bash
-pyinstaller --windowed --onefile --icon=tray_icon.ico main.py
-```
+### Code Structure
+The application uses PyQt5 for the GUI and voicemeeterlib for Voicemeeter integration. The main components are:
+- System tray application with context menu
+- Combined control panel with routing and volume sections
+- Real-time VU meters using custom painting
+- Auto-hide functionality with mouse tracking
 
 ## Known Issues
 
@@ -105,6 +104,7 @@ pyinstaller --windowed --onefile --icon=tray_icon.ico main.py
 - Volume sliders sync with Voicemeeter on panel open
 - Routing panel requires Voicemeeter to be running for proper functionality
 - Double-click reset feature works on volume sliders only
+- Application requires Voicemeeter Potato edition for full functionality
 
 ## Contributing
 

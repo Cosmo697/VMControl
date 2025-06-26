@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# VMControl specific
+vmcontrol.lock
+
 # C extensions
 *.so
 
