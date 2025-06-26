@@ -1,6 +1,5 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
-import threading
-import time
+from .constants import VU_UPDATE_INTERVAL_MS
 
 class VolumePanel(QtWidgets.QWidget):
     def __init__(self, vm):
@@ -79,10 +78,11 @@ class VolumePanel(QtWidgets.QWidget):
         
         main_layout.addLayout(volume_layout)
         self.setLayout(main_layout)
-        
-        # Start VU meter update thread
-        self.vu_update_thread = threading.Thread(target=self._update_vu_meters, daemon=True)
-        self.vu_update_thread.start()
+
+        # Use a QTimer for periodic VU updates instead of a thread
+        self.vu_timer = QtCore.QTimer(self)
+        self.vu_timer.timeout.connect(self._update_vu_meters)
+        self.vu_timer.start(VU_UPDATE_INTERVAL_MS)
 
     def _reset_to_zero(self, idx):
         """Reset slider to 0dB on double-click"""
@@ -104,23 +104,17 @@ class VolumePanel(QtWidgets.QWidget):
 
     def _update_vu_meters(self):
         """Update VU meters with current levels"""
-        while True:
-            try:
-                for i, vu_meter in enumerate(self.vu_meters):
-                    if i < len(self.vm.strip):
-                        # Get level from Voicemeeter (using level attribute if available)
-                        try:
-                            level = getattr(self.vm.strip[i], 'level', [0, 0])
-                            if isinstance(level, (list, tuple)) and len(level) > 0:
-                                db_level = level[0] if level[0] > -60 else -60
-                            else:
-                                db_level = -60
-                        except:
-                            db_level = -60
-                        vu_meter.update_level(db_level)
-                time.sleep(0.05)  # Update at ~20fps
-            except:
-                time.sleep(0.1)
+        for i, vu_meter in enumerate(self.vu_meters):
+            if i < len(self.vm.strip):
+                try:
+                    level = getattr(self.vm.strip[i], 'level', [0, 0])
+                    if isinstance(level, (list, tuple)) and len(level) > 0:
+                        db_level = level[0] if level[0] > -60 else -60
+                    else:
+                        db_level = -60
+                except Exception:
+                    db_level = -60
+                vu_meter.update_level(db_level)
 
     def update_sliders(self):
         for i, slider in enumerate(self.sliders):
